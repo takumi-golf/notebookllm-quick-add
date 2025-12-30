@@ -465,25 +465,25 @@
             <!-- Main Controls -->
             <button id="addBtn" class="hidden">
                 <span class="material-symbols-rounded">add_circle</span>
-                <span class="btn-text">現在のページを追加</span>
+                <span class="btn-text" data-i18n="btnAddCurrent">現在のページを追加</span>
                 <div class="spinner"></div>
             </button>
 
             <div id="placeholder">
                 <span class="material-symbols-rounded" style="margin-right: 8px;">info</span>
-                ノートブックを選択してください
+                <span data-i18n="statusSelectNotebook">ノートブックを選択してください</span>
             </div>
 
-            <button id="btnUrl" class="icon-btn" title="URLを手動入力">
+            <button id="btnUrl" class="icon-btn" data-i18n-title="tooltipManualUrl" title="URLを手動入力">
                 <span class="material-symbols-rounded">link</span>
             </button>
-            <button id="btnText" class="icon-btn" title="テキストを貼り付け">
+            <button id="btnText" class="icon-btn" data-i18n-title="tooltipAndText" title="テキストを貼り付け">
                 <span class="material-symbols-rounded">content_paste</span>
             </button>
-            <button id="historyBtn" class="icon-btn" title="最近の追加履歴">
+            <button id="historyBtn" class="icon-btn" data-i18n-title="tooltipHistory" title="最近の追加履歴">
                 <span class="material-symbols-rounded">history</span>
             </button>
-            <button id="btnDonate" class="icon-btn" title="開発者を支援 (寄付)">
+            <button id="btnDonate" class="icon-btn donate-nudge" data-i18n-title="tooltipDonate" title="開発者を支援 (寄付)">
                 <span class="material-symbols-rounded" style="color: #ff6b6b;">favorite</span>
             </button>
         </div>
@@ -495,18 +495,20 @@
     <!-- URL Input -->
     <div id="manualInputContainer" class="input-container">
         <div class="input-group">
-            <input type="text" id="manualUrl" placeholder="https://example.com" spellcheck="false">
-            <button id="manualAddBtn" class="action-submit-btn">追加</button>
+            <input type="text" id="manualUrl" data-i18n-placeholder="placeholderUrl" placeholder="https://example.com"
+                spellcheck="false">
+            <button id="manualAddBtn" class="action-submit-btn" data-i18n="btnAdd">追加</button>
         </div>
     </div>
 
     <!-- Text Input -->
     <div id="textInputContainer" class="input-container">
         <div class="input-group">
-            <textarea id="manualTextTextarea" placeholder="ここにテキストを貼り付け..." spellcheck="false"></textarea>
+            <textarea id="manualTextTextarea" data-i18n-placeholder="placeholderText" placeholder="ここにテキストを貼り付け..."
+                spellcheck="false"></textarea>
         </div>
         <div style="display: flex; justify-content: flex-end;">
-            <button id="manualTextAddBtn" class="action-submit-btn">追加</button>
+            <button id="manualTextAddBtn" class="action-submit-btn" data-i18n="btnAdd">追加</button>
         </div>
     </div>
 
@@ -517,10 +519,10 @@
         <!-- History Sidebar/Panel -->
         <div id="historyPanel">
             <div id="historyHeader">
-                <h3>最近の追加</h3>
+                <h3 data-i18n="headerHistory">最近の追加</h3>
                 <div style="display: flex; gap: 4px; align-items: center;">
-                    <button id="clearHistory">すべて削除</button>
-                    <button id="closeHistory" class="icon-btn" title="閉じる">
+                    <button id="clearHistory" data-i18n="btnClear">すべて削除</button>
+                    <button id="closeHistory" class="icon-btn" data-i18n-title="btnClose" title="閉じる">
                         <span class="material-symbols-rounded">close</span>
                     </button>
                 </div>
@@ -530,7 +532,7 @@
     </div>
 
     <div id="shortcutHint">
-        <span style="opacity: 0.7;">Keyboard Shortcut:</span>
+        <span style="opacity: 0.7;" data-i18n="shortcutHint">Keyboard Shortcut:</span>
         <code style="background: rgba(128,128,128,0.1); padding: 1px 4px; border-radius: 3px;">Ctrl + .</code>
     </div>
     <script src="sidepanel.js"></script>

@@ -1,8 +1,9 @@
 {
     "manifest_version": 3,
-    "name": "NotebookLLM Quick Add",
+    "name": "__MSG_extName__",
     "version": "1.1",
-    "description": "One-click add current page to NotebookLLM",
+    "default_locale": "en",
+    "description": "__MSG_extDesc__",
     "permissions": [
         "activeTab",
         "tabs",

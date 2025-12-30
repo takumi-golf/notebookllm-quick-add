@@ -1,0 +1,59 @@
+{
+    "extName": {
+        "message": "NotebookLM Quick Add"
+    },
+    "extDesc": {
+        "message": "現在のページをNotebookLMにワンクリックで追加"
+    },
+    "btnAddCurrent": {
+        "message": "現在のページを追加"
+    },
+    "statusSelectNotebook": {
+        "message": "ノートブックを選択してください..."
+    },
+    "tooltipManualUrl": {
+        "message": "URLを手動入力"
+    },
+    "tooltipAndText": {
+        "message": "テキストを貼り付け"
+    },
+    "tooltipHistory": {
+        "message": "最近の追加履歴"
+    },
+    "tooltipDonate": {
+        "message": "開発者を支援 (寄付)"
+    },
+    "placeholderUrl": {
+        "message": "https://example.com/article..."
+    },
+    "placeholderText": {
+        "message": "テキストを入力..."
+    },
+    "btnAdd": {
+        "message": "追加"
+    },
+    "headerHistory": {
+        "message": "履歴"
+    },
+    "btnClear": {
+        "message": "クリア"
+    },
+    "msgHistoryEmpty": {
+        "message": "履歴はありません"
+    },
+    "confirmClear": {
+        "message": "履歴をすべて削除しますか？"
+    },
+    "statusReady": {
+        "message": "準備完了"
+    },
+    "statusAdding": {
+        "message": "追加中..."
+    },
+    "errorGeneric": {
+        "message": "エラーが発生しました"
+    },
+    "shortcutHint": {
+        "message": "ショートカット:"
+    }
+}

@@ -4,7 +4,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const iframe = document.getElementById('notebookFrame');
     const addBtn = document.getElementById('addBtn');
     const placeholder = document.getElementById('placeholder');
-    const extraActions = document.getElementById('extraActions');
+    // const extraActions = document.getElementById('extraActions'); // Removed from DOM
+
+    // Initialize Localization
+    localizeHtml();
 
     // Action Buttons
     // Action Buttons
@@ -123,7 +126,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!url) return;
 
         if (!url.startsWith('http')) {
-            alert('URLは http または https で始まる必要があります');
+            alert(chrome.i18n.getMessage("errorGeneric") + " (URL must start with http/https)");
             return;
         }
 
@@ -159,7 +162,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     clearHistory.addEventListener('click', async () => {
-        if (confirm('履歴をすべて削除しますか？')) {
+        if (confirm(chrome.i18n.getMessage("confirmClear"))) {
             await chrome.runtime.sendMessage({ action: "clearHistory" });
             loadHistory();
         }
@@ -205,7 +208,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
             if (response && !response.success && response.error) {
-                alert("エラー: " + response.error);
+                const msg = chrome.i18n.getMessage("errorGeneric");
+                alert(msg + ": " + response.error);
                 setLoading(false);
             }
             if (callback) callback(response);
@@ -235,14 +239,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                     display: flex; flex-direction: column; align-items: center; 
                     justify-content: center; height: 100%; color: var(--secondary-text); gap: 10px;">
                     <div style="font-size: 24px;">📝</div>
-                    <div>履歴がありません</div>
+                    <div>${chrome.i18n.getMessage("msgHistoryEmpty")}</div>
                 </div>`;
             return;
         }
 
         historyList.innerHTML = history.map(item => {
             const date = new Date(item.date);
-            const dateStr = date.toLocaleDateString('ja-JP') + ' ' + date.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+            // Use browser's default locale
+            const dateStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             return `
                 <div class="history-item" data-url="${item.url}" title="クリックして開く">
                     <div class="history-item-title">${escapeHtml(item.title || 'No title')}</div>
@@ -266,5 +271,34 @@ document.addEventListener('DOMContentLoaded', async () => {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    function localizeHtml() {
+        // Localize text content
+        document.querySelectorAll('[data-i18n]').forEach(element => {
+            const key = element.getAttribute('data-i18n');
+            const message = chrome.i18n.getMessage(key);
+            if (message) {
+                element.textContent = message;
+            }
+        });
+
+        // Localize placeholders
+        document.querySelectorAll('[data-i18n-placeholder]').forEach(element => {
+            const key = element.getAttribute('data-i18n-placeholder');
+            const message = chrome.i18n.getMessage(key);
+            if (message) {
+                element.placeholder = message;
+            }
+        });
+
+        // Localize titles (tooltips)
+        document.querySelectorAll('[data-i18n-title]').forEach(element => {
+            const key = element.getAttribute('data-i18n-title');
+            const message = chrome.i18n.getMessage(key);
+            if (message) {
+                element.title = message;
+            }
+        });
     }
 });

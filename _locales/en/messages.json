@@ -1,0 +1,78 @@
+{
+    "extName": {
+        "message": "NotebookLM Quick Add",
+        "description": "Extension name"
+    },
+    "extDesc": {
+        "message": "One-click add current page to NotebookLM",
+        "description": "Extension description"
+    },
+    "btnAddCurrent": {
+        "message": "Add Current Page",
+        "description": "Main button text"
+    },
+    "statusSelectNotebook": {
+        "message": "Please select a notebook...",
+        "description": "Status text when no notebook is active"
+    },
+    "tooltipManualUrl": {
+        "message": "Enter URL manually",
+        "description": "Tooltip for link icon"
+    },
+    "tooltipAndText": {
+        "message": "Paste Text",
+        "description": "Tooltip for paste icon"
+    },
+    "tooltipHistory": {
+        "message": "History",
+        "description": "Tooltip for history icon"
+    },
+    "tooltipDonate": {
+        "message": "Support Developer",
+        "description": "Tooltip for donate heart icon"
+    },
+    "placeholderUrl": {
+        "message": "https://example.com/article...",
+        "description": "Placeholder for URL input"
+    },
+    "placeholderText": {
+        "message": "Paste text here...",
+        "description": "Placeholder for text area"
+    },
+    "btnAdd": {
+        "message": "Add",
+        "description": "Generic add button text"
+    },
+    "headerHistory": {
+        "message": "History",
+        "description": "Header for history panel"
+    },
+    "btnClear": {
+        "message": "Clear",
+        "description": "Clear history button"
+    },
+    "msgHistoryEmpty": {
+        "message": "No history yet",
+        "description": "Empty history message"
+    },
+    "confirmClear": {
+        "message": "Are you sure you want to clear all history?",
+        "description": "Confirmation dialog"
+    },
+    "statusReady": {
+        "message": "Ready",
+        "description": "Status text"
+    },
+    "statusAdding": {
+        "message": "Adding...",
+        "description": "Status text"
+    },
+    "errorGeneric": {
+        "message": "Error occurred",
+        "description": "Generic error"
+    },
+    "shortcutHint": {
+        "message": "Shortcut:",
+        "description": "Hint label for keyboard shortcut"
+    }
+}
