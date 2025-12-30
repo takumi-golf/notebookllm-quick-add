@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>NotebookLLM Quick Add Options</title>
+  <style>
+    body { padding: 20px; font-family: sans-serif; max-width: 600px; }
+    label { display: block; margin-bottom: 10px; font-weight: bold; }
+    input { width: 100%; padding: 8px; margin-bottom: 20px; }
+    button { padding: 10px 20px; background: #1a73e8; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    button:hover { background: #1557b0; }
+    .status { margin-top: 10px; color: green; display: none; }
+    .help { font-size: 0.9em; color: #666; background: #f1f3f4; padding: 10px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h2>Extension Settings</h2>
+  
+  <label for="notebookId">Default Notebook ID</label>
+  <input type="text" id="notebookId" placeholder="e.g., 12345678-abcd-1234-abcd-1234567890ab">
+  
+  <div class="help">
+    <p><strong>How to find your Notebook ID:</strong></p>
+    <ol>
+      <li>Open your preferred notebook in NotebookLLM.</li>
+      <li>Look at the URL: <code>https://notebooklm.google.com/notebook/<b>YOUR_ID_IS_HERE</b></code></li>
+      <li>Copy that ID and paste it above.</li>
+    </ol>
+    <p>If left empty, the extension will open the main NotebookLLM page, and you will have to select a notebook manually.</p>
+  </div>
+
+  <button id="save">Save</button>
+  <div id="status" class="status">Saved!</div>
+
+  <script src="options.js"></script>
+</body>
+</html>

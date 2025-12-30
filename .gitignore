@@ -1,0 +1,22 @@
+# OS junk
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Logs
+*.log
+npm-debug.log*
+
+# Dependencies
+node_modules/
+
+# IDEs
+.vscode/
+.idea/
+
+# Environment
+.env
+
+# Build artifacts (if any)
+dist/
+build/
