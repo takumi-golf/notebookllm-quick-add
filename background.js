@@ -264,7 +264,7 @@ function showNotification(success, url, customMessage = null) {
 
   chrome.notifications.create({
     type: "basic",
-    iconUrl: "icons/icon128.svg",
+    iconUrl: "icons/icon128.png",
     title: title,
     message: message
   });
