@@ -162,11 +162,69 @@
             color: var(--text-color);
         }
 
+        /* Heartbeat Animation for Donate Button */
+        @keyframes heartbeat {
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            25% {
+                transform: scale(1.2);
+            }
+
+            50% {
+                transform: scale(1);
+            }
+
+            75% {
+                transform: scale(1.15);
+            }
+        }
+
+        .donate-nudge.heartbeat-slow .material-symbols-rounded {
+            animation: heartbeat 2s ease-in-out infinite;
+        }
+
+        .donate-nudge.heartbeat-medium .material-symbols-rounded {
+            animation: heartbeat 1s ease-in-out infinite;
+        }
+
+        .donate-nudge.heartbeat-fast .material-symbols-rounded {
+            animation: heartbeat 0.5s ease-in-out infinite;
+        }
+
         .icon-btn .material-symbols-rounded {
             font-size: 20px;
         }
 
+        /* Placeholder / Select Notebook Message - INFORMATIONAL */
+        #placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 14px;
+            background: rgba(128, 128, 128, 0.1);
+            border: 1px dashed var(--secondary-text);
+            border-radius: 8px;
+            color: var(--secondary-text);
+            font-weight: 500;
+            font-size: 13px;
+            gap: 6px;
+        }
+
+        #placeholder.hidden {
+            display: none;
+        }
+
+        #placeholder .material-symbols-rounded {
+            font-size: 18px;
+            color: var(--secondary-text);
+        }
+
         /* Action Row (Bottom line in header) */
+
         .action-row {
             display: none;
             gap: 8px;
@@ -470,20 +528,18 @@
             </button>
 
             <div id="placeholder">
-                <span class="material-symbols-rounded" style="margin-right: 8px;">info</span>
+                <span class="material-symbols-rounded">info</span>
                 <span data-i18n="statusSelectNotebook">ノートブックを選択してください</span>
             </div>
 
-            <button id="btnUrl" class="icon-btn" data-i18n-title="tooltipManualUrl" title="URLを手動入力">
-                <span class="material-symbols-rounded">link</span>
-            </button>
             <button id="btnText" class="icon-btn" data-i18n-title="tooltipAndText" title="テキストを貼り付け">
                 <span class="material-symbols-rounded">content_paste</span>
             </button>
             <button id="historyBtn" class="icon-btn" data-i18n-title="tooltipHistory" title="最近の追加履歴">
                 <span class="material-symbols-rounded">history</span>
             </button>
-            <button id="btnDonate" class="icon-btn donate-nudge" data-i18n-title="tooltipDonate" title="開発者を支援 (寄付)">
+            <button id="btnDonate" class="icon-btn" data-i18n-title="tooltipDonate" title="開発者を支援 (寄付)">
+
                 <span class="material-symbols-rounded" style="color: #ff6b6b;">favorite</span>
             </button>
         </div>
@@ -491,15 +547,7 @@
         <!-- Extra Actions Row Removed as per request -->
     </div>
 
-    <!-- Manual Input Forms -->
-    <!-- URL Input -->
-    <div id="manualInputContainer" class="input-container">
-        <div class="input-group">
-            <input type="text" id="manualUrl" data-i18n-placeholder="placeholderUrl" placeholder="https://example.com"
-                spellcheck="false">
-            <button id="manualAddBtn" class="action-submit-btn" data-i18n="btnAdd">追加</button>
-        </div>
-    </div>
+
 
     <!-- Text Input -->
     <div id="textInputContainer" class="input-container">

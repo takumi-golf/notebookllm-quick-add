@@ -74,5 +74,35 @@
     "shortcutHint": {
         "message": "Shortcut:",
         "description": "Hint label for keyboard shortcut"
+    },
+    "statusStarting": {
+        "message": "Starting..."
+    },
+    "statusStep1": {
+        "message": "Step 1 - Sources Tab"
+    },
+    "statusStep2": {
+        "message": "Step 2 - Add Source"
+    },
+    "statusStep3Website": {
+        "message": "Step 3 - Website"
+    },
+    "statusStep3YouTube": {
+        "message": "Step 3 - YouTube"
+    },
+    "statusStep4": {
+        "message": "Step 4 - Enter URL"
+    },
+    "statusStep5": {
+        "message": "Step 5 - Insert"
+    },
+    "statusSuccess": {
+        "message": "✓ Added successfully!"
+    },
+    "statusTextStarting": {
+        "message": "Adding text..."
+    },
+    "statusTextSuccess": {
+        "message": "✓ Text added!"
     }
 }

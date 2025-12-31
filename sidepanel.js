@@ -9,17 +9,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Initialize Localization
     localizeHtml();
 
+
     // Action Buttons
     // Action Buttons
     // const btnUpload = document.getElementById('btnUpload'); // Removed
-    const btnUrl = document.getElementById('btnUrl');
+    // const btnUrl = document.getElementById('btnUrl'); // Removed
     const btnText = document.getElementById('btnText');
     const btnDonate = document.getElementById('btnDonate');
 
     // Input UI Elements
-    const manualInputContainer = document.getElementById('manualInputContainer');
-    const manualUrlInput = document.getElementById('manualUrl');
-    const manualAddBtn = document.getElementById('manualAddBtn');
+    // URL Input removed
 
     const textInputContainer = document.getElementById('textInputContainer');
     const manualTextTextarea = document.getElementById('manualTextTextarea');
@@ -43,18 +42,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (selected) {
             addBtn.classList.remove('hidden');
             placeholder.classList.add('hidden');
-            // Buttons are now always visible in header, or we can toggle them if we want strict behavior
-            // But user asked for them next to Add button, so likely always visible or visible when notebook selected
-            // Let's keep them visible only when notebook selected for consistency with "Add" button context
-            btnUrl.style.display = 'flex';
+            // Show buttons when notebook is selected
             btnText.style.display = 'flex';
+            historyBtn.style.display = 'flex';
             shortcutHint.classList.remove('hidden');
         } else {
             addBtn.classList.add('hidden');
             placeholder.classList.remove('hidden');
-            btnUrl.style.display = 'none';
+            // Hide buttons when notebook is not selected
             btnText.style.display = 'none';
+            historyBtn.style.display = 'none';
             shortcutHint.classList.add('hidden');
+            // Also close any open input containers
+            closeAllInputs();
         }
     }
 
@@ -94,13 +94,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     });
 
+
     // 3. Extra Action Buttons
     // 3. Extra Action Buttons
     // Upload removed
-
-    btnUrl.addEventListener('click', () => {
-        toggleInput(manualInputContainer, manualUrlInput);
-    });
+    // URL button removed
 
     btnText.addEventListener('click', () => {
         toggleInput(textInputContainer, manualTextTextarea);
@@ -116,27 +114,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function closeAllInputs() {
-        manualInputContainer.classList.remove('show');
         textInputContainer.classList.remove('show');
     }
 
-    // 4. Manual URL Add Button
-    manualAddBtn.addEventListener('click', async () => {
-        const url = manualUrlInput.value.trim();
-        if (!url) return;
-
-        if (!url.startsWith('http')) {
-            alert(chrome.i18n.getMessage("errorGeneric") + " (URL must start with http/https)");
-            return;
-        }
-
-        setLoading(true);
-        sendMessage({ action: "addManualSource", url: url }, () => {
-            manualUrlInput.value = '';
-            closeAllInputs();
-            incrementUsage();
-        });
-    });
+    // 4. Manual URL Add Button - REMOVED
 
     // 5. Manual Text Add Button
     manualTextAddBtn.addEventListener('click', async () => {
@@ -172,31 +153,46 @@ document.addEventListener('DOMContentLoaded', async () => {
     btnDonate.addEventListener('click', () => {
         const donationUrl = "https://buymeacoffee.com/takumi272";
         chrome.tabs.create({ url: donationUrl });
-        // Stop animation on click
-        btnDonate.classList.remove('donate-nudge');
+        // Stop animation and reset usage count
+        btnDonate.classList.remove('donate-nudge', 'heartbeat-slow', 'heartbeat-medium', 'heartbeat-fast');
+        chrome.storage.local.set({ usageCount: 0 });
     });
 
-    // --- Usage Tracking for Nudge ---
+
+    // --- Usage Tracking for Heartbeat Animation ---
+    const NUDGE_THRESHOLD = 10; // Start showing animation after 10 uses
+
     function incrementUsage() {
         chrome.storage.local.get(['usageCount'], (result) => {
             const current = result.usageCount || 0;
             const newCount = current + 1;
             chrome.storage.local.set({ usageCount: newCount });
-            checkNudge(newCount);
         });
     }
 
     function checkNudge(count) {
-        // Nudge on 3rd use, and every 10 uses thereafter
-        if (count >= 3 && (count === 3 || count % 10 === 0)) {
+        // Remove any existing animation class
+        btnDonate.classList.remove('donate-nudge', 'heartbeat-slow', 'heartbeat-medium', 'heartbeat-fast');
+
+        if (count >= NUDGE_THRESHOLD) {
             btnDonate.classList.add('donate-nudge');
+            if (count >= 100) {
+                btnDonate.classList.add('heartbeat-fast');
+            } else if (count >= 50) {
+                btnDonate.classList.add('heartbeat-medium');
+            } else {
+                btnDonate.classList.add('heartbeat-slow');
+            }
         }
     }
 
-    // Check on load too
+
+    // Check on load
     chrome.storage.local.get(['usageCount'], (result) => {
-        checkNudge(result.usageCount || 0);
+        const count = result.usageCount || 0;
+        checkNudge(count);
     });
+
 
     // --- Helpers ---
 

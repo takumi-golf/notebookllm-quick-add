@@ -1,6 +1,7 @@
 // --- NotebookLLM Automation Script ---
+// Version 3.0: Exact 4-Route Implementation
 
-// Remove any existing status boxes first
+// === STATUS BOX ===
 document.querySelectorAll('.nlm-status-box').forEach(el => el.remove());
 
 const statusBox = document.createElement('div');
@@ -19,7 +20,6 @@ document.body.appendChild(statusBox);
 let statusTimeout = null;
 
 function updateStatus(text, color = "#eee", autoDismiss = false) {
-    console.log(`[NLM Auto] ${text}`);
     statusBox.innerHTML = `<span style="color:${color}">${text}</span>`;
     statusBox.style.opacity = '1';
     statusBox.style.display = 'block';
@@ -36,6 +36,11 @@ function updateStatus(text, color = "#eee", autoDismiss = false) {
 
 function delay(ms) {
     return new Promise(r => setTimeout(r, ms));
+}
+
+// === i18n HELPER ===
+function i18n(key, fallback) {
+    return chrome.i18n.getMessage(key) || fallback;
 }
 
 function waitFor(fn, timeout = 8000, interval = 300) {
@@ -59,6 +64,108 @@ function waitFor(fn, timeout = 8000, interval = 300) {
     });
 }
 
+// === VERSION DETECTION ===
+function detectVersion() {
+    const allText = document.body.innerText || '';
+    const hasPROLabel = allText.includes('PRO');
+
+    if (hasPROLabel) {
+        return 'pro';
+    }
+
+    return 'free';
+}
+
+// === URL TYPE DETECTION ===
+function getUrlType(url) {
+    if (url.includes('youtube.com') || url.includes('youtu.be')) {
+        return 'youtube';
+    }
+    return 'website';
+}
+
+// === HELPER: Find and click element by text ===
+async function clickByText(texts, elementTypes = 'button, div[role="button"], span[role="button"], mat-chip, mat-chip-option, [role="tab"], [role="listitem"]', timeout = 8000) {
+    const textArray = Array.isArray(texts) ? texts : [texts];
+
+    const element = await waitFor(() => {
+        const elements = document.querySelectorAll(elementTypes);
+        for (const el of elements) {
+            if (el.offsetParent === null) continue;
+            const elText = (el.textContent || '').toLowerCase().trim();
+
+            for (const t of textArray) {
+                if (elText.includes(t.toLowerCase())) {
+                    return el;
+                }
+            }
+        }
+        return null;
+    }, timeout);
+
+    if (element) {
+        element.click();
+        return true;
+    }
+    return false;
+}
+
+// === HELPER: Find textarea by label/placeholder ===
+async function findTextarea(labels, timeout = 5000) {
+    const labelArray = Array.isArray(labels) ? labels : [labels];
+
+    return await waitFor(() => {
+        const textareas = document.querySelectorAll('textarea');
+        console.log(`[NLM Auto] Searching ${textareas.length} textareas for: ${labelArray.join(', ')}`);
+
+        for (const ta of textareas) {
+            if (ta.offsetParent === null) continue;
+
+            // Get context
+            const parent = ta.closest('mat-form-field') || ta.parentElement?.parentElement || ta.parentElement;
+            const parentText = parent ? (parent.textContent || '').toLowerCase() : '';
+            const placeholder = (ta.placeholder || '').toLowerCase();
+            const aria = (ta.getAttribute('aria-label') || '').toLowerCase();
+            const classes = ta.className || '';
+
+            console.log(`[NLM Auto] Checking textarea: aria="${aria.substring(0, 30)}" placeholder="${placeholder.substring(0, 30)}" class="${classes.substring(0, 50)}" parentText="${parentText.substring(0, 30)}"`);
+
+            // Skip emoji/search textareas (check BOTH aria AND placeholder)
+            if (aria.includes('絵文字') || aria.includes('emoji')) continue;
+            if (aria.includes('検索') || aria.includes('search') || aria.includes('クエリ') || aria.includes('query')) continue;
+            if (placeholder.includes('検索') || placeholder.includes('search') || placeholder.includes('ソースを検索')) continue;
+
+            // If it passes the skip checks and is a Material Design input, use it
+            if (classes.includes('mat-mdc-input-element') || classes.includes('mdc-text-field__input')) {
+                console.log('[NLM Auto] Found Material Design textarea (not search bar)');
+                return ta;
+            }
+
+
+            for (const label of labelArray) {
+                const l = label.toLowerCase();
+                if (parentText.includes(l) || placeholder.includes(l) || aria.includes(l)) {
+                    console.log(`[NLM Auto] Found textarea with label: "${label}"`);
+                    return ta;
+                }
+            }
+        }
+
+        // Fallback: return first visible non-search textarea
+        for (const ta of textareas) {
+            if (ta.offsetParent === null) continue;
+            const aria = (ta.getAttribute('aria-label') || '').toLowerCase();
+            if (aria.includes('絵文字') || aria.includes('検索')) continue;
+            console.log('[NLM Auto] Using fallback textarea');
+            return ta;
+        }
+
+        return null;
+
+    }, timeout);
+}
+
+// === CONNECTION ===
 let port = null;
 function connect() {
     try {
@@ -100,262 +207,232 @@ setInterval(() => {
     }
 }, 500);
 
+// ============================================
+// MAIN AUTOMATION
+// ============================================
 async function runAutomation(url) {
+    const version = detectVersion();
+    const urlType = getUrlType(url);
+
+    updateStatus(i18n("statusStarting", "Starting..."), "#ffd93d");
+
     try {
-        updateStatus("Starting...", "#ffd93d");
-
-        // === STEP 0: Click Sources Tab if needed ===
-        const allTabs = document.querySelectorAll('[role="tab"]');
-        for (const tab of allTabs) {
-            const text = tab.textContent || '';
-            if (text.includes('ソース') || text.includes('Sources')) {
-                if (tab.getAttribute('aria-selected') !== 'true') {
-                    updateStatus("Clicking Sources tab...", "#ffd93d");
-                    tab.click();
-                    await delay(500);
-                }
-                break;
-            }
+        if (version === 'pro') {
+            await runAutomationPro(url);
+        } else {
+            await runAutomationFree(url, urlType);
         }
-
-        // === STEP 1: Click Add Source Button ===
-        const addSourceBtn = await waitFor(() => {
-            // Strategy 1: Specific Classes
-            const classSelectors = ['.add-source-button', '.upload-button', '.upload-icon-button'];
-            for (const selector of classSelectors) {
-                const el = document.querySelector(selector);
-                if (el && !el.disabled && el.offsetParent) return el;
-            }
-
-            // Strategy 2: Text Content ( জাপ Japanese / English)
-            const buttons = document.querySelectorAll('button, div[role="button"]');
-            for (const btn of buttons) {
-                if (btn.offsetParent === null) continue; // Skip hidden
-                const text = (btn.textContent || "").trim().toLowerCase();
-                if (text.includes("ソースを追加") || text.includes("add source")) {
-                    return btn;
-                }
-                // Strategy 3: Icon Content check
-                const icon = btn.querySelector('.material-icons, .material-symbols-outlined, .material-symbols-rounded');
-                if (icon && (icon.textContent === 'add_circle' || icon.textContent === 'add')) {
-                    // Be careful not to pick other add buttons if multiple exist, but usually main one is prominent
-                    if (btn.classList.contains('mat-fab') || btn.classList.contains('mat-mdc-fab')) return btn;
-                }
-            }
-            return null;
-        }, 8000); // Increased timeout
-
-        if (!addSourceBtn) throw new Error("ソース追加ボタンが見つかりません");
-
-        updateStatus("Clicking Add Source...", "#ffd93d");
-        addSourceBtn.click();
-        await delay(500);
-
-        // === Scroll to ensure visibility ===
-        // 1. Scroll main containers to bottom
-        const scrollSelectors = ['.mat-drawer-content', '.notebook-content', 'main'];
-        scrollSelectors.forEach(selector => {
-            const el = document.querySelector(selector);
-            if (el) try { el.scrollTo({ top: el.scrollHeight, behavior: 'instant' }); } catch (e) { }
+    } catch (error) {
+        console.error("Automation failed:", error);
+        updateStatus(`✗ ${error.message}`, "#ff6b6b", true);
+        chrome.runtime.sendMessage({
+            action: "automationComplete",
+            success: false,
+            url: url,
+            error: error.message
         });
-        window.scrollTo({ top: document.body.scrollHeight, behavior: 'instant' });
+    }
+}
 
-        // 2. Find the dialog and scroll its LAST button into view
-        // This forces the "Copied text" or bottom options to appear
-        await delay(300);
-        const dialog = document.querySelector('mat-dialog-container') || document.querySelector('[role="dialog"]');
-        if (dialog) {
-            // Find all buttons inside the dialog
-            const buttons = dialog.querySelectorAll('button');
-            if (buttons.length > 0) {
-                const lastButton = buttons[buttons.length - 1];
-                lastButton.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            } else {
-                dialog.scrollIntoView({ behavior: 'smooth', block: 'end' });
-            }
-        }
+// ============================================
+// PRO VERSION: All URLs go through "ウェブサイト"
+// ============================================
+async function runAutomationPro(url) {
+    updateStatus(i18n("statusStep1", "Step 1 - Sources Tab"), "#ffd93d");
 
-        await delay(500);
+    // STEP 1: Click "ソース" tab
+    if (!await clickByText(['ソース', 'sources', 'source'])) {
+        // May already be on sources tab
+    }
+    await delay(300);
 
-        // === STEP 2: Click Website Option ===
-        updateStatus("Finding Website option...", "#ffd93d");
+    // STEP 2: Click "ソースを追加" button
+    updateStatus(i18n("statusStep2", "Step 2 - Add Source"), "#ffd93d");
+    if (!await clickByText(['ソースを追加', 'add source', 'add sources'])) {
+        throw new Error("ソースを追加ボタンが見つかりません");
+    }
+    await delay(500);
 
-        const websiteBtn = await waitFor(() => {
-            const buttons = document.querySelectorAll('button');
-            for (const btn of buttons) {
-                if (btn.offsetParent === null) continue;
-                const text = btn.textContent || '';
-                if (text.includes('ウェブサイト') || text.includes('Website')) {
-                    return btn;
+    // STEP 3: Click "ウェブサイト" button (Pro uses this for ALL URLs including YouTube)
+    updateStatus(i18n("statusStep3Website", "Step 3 - Website"), "#ffd93d");
+    if (!await clickByText(['ウェブサイト', 'website', 'websites'])) {
+        throw new Error("ウェブサイトボタンが見つかりません");
+    }
+    await delay(500);
+
+    // STEP 4: Find and fill URL input
+    updateStatus(i18n("statusStep4", "Step 4 - Enter URL"), "#ffd93d");
+    const input = await findTextarea(['url', '貼り付け', 'paste', 'links']);
+
+    if (!input) throw new Error("URL入力欄が見つかりません");
+
+    input.focus();
+    input.value = url;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    await delay(500);
+
+    // STEP 5: Click "挿入" button
+    updateStatus(i18n("statusStep5", "Step 5 - Insert"), "#ffd93d");
+    if (!await clickByText(['挿入', 'insert'])) {
+        throw new Error("挿入ボタンが見つかりません");
+    }
+
+    updateStatus(i18n("statusSuccess", "✓ Added successfully!"), "#00ff88", true);
+    chrome.runtime.sendMessage({ action: "automationComplete", success: true, url: url });
+}
+
+// ============================================
+// FREE VERSION: YouTube and Website are separate
+// ============================================
+async function runAutomationFree(url, urlType) {
+    updateStatus(i18n("statusStep1", "Step 1 - Sources Tab"), "#ffd93d");
+
+    // STEP 1: Click "ソース" tab
+    await clickByText(['ソース', 'sources', 'source']);
+    await delay(300);
+
+    // STEP 2: Click "ソースを追加" button
+    updateStatus(i18n("statusStep2", "Step 2 - Add Source"), "#ffd93d");
+    if (!await clickByText(['ソースを追加', 'add source', 'add sources'])) {
+        throw new Error("ソースを追加ボタンが見つかりません");
+    }
+    await delay(500);
+
+    // STEP 3: Click appropriate button based on URL type
+    if (urlType === 'youtube') {
+        updateStatus(i18n("statusStep3YouTube", "Step 3 - YouTube"), "#ffd93d");
+
+        // Find YouTube chip/button specifically (avoid clicking icon)
+        const youtubeClicked = await waitFor(() => {
+            const chips = document.querySelectorAll('mat-chip, mat-chip-option, [role="listitem"]');
+
+            for (const chip of chips) {
+                if (chip.offsetParent === null) continue;
+
+                // Get text content, but filter out icon names
+                const textNodes = chip.querySelectorAll('span, .mat-mdc-chip-action-label, .mdc-evolution-chip__text-label');
+                for (const node of textNodes) {
+                    const text = (node.textContent || '').trim();
+                    // Match exact "YouTube" (avoiding icon text like "video_youtube")
+                    if (text === 'YouTube' || text.toLowerCase() === 'youtube') {
+                        chip.click();
+                        return true;
+                    }
                 }
             }
             return null;
         }, 5000);
 
-        if (!websiteBtn) throw new Error("ウェブサイトオプションが見つかりません");
+        if (!youtubeClicked) {
+            // Fallback to generic clickByText
+            if (!await clickByText(['youtube'])) {
+                throw new Error("YouTubeボタンが見つかりません");
+            }
+        }
+        await delay(1000); // Wait longer for YouTube dialog to open
 
-        websiteBtn.click();
-        await delay(500);
 
-        // === STEP 3: Find and Fill Input ===
-        updateStatus("Finding input field...", "#ffd93d");
+        // STEP 4: Find YouTube URL input
+        updateStatus(i18n("statusStep4", "Step 4 - Enter URL"), "#ffd93d");
 
         const input = await waitFor(() => {
-            let textarea = document.querySelector('textarea[aria-label="URL を入力"]');
-            if (textarea) return textarea;
+            const inputs = document.querySelectorAll('input.mat-mdc-input-element, textarea.mat-mdc-input-element, input.mdc-text-field__input, textarea.mdc-text-field__input');
 
-            textarea = document.querySelector('textarea[placeholder="リンクを貼り付ける"]');
-            if (textarea) return textarea;
+            for (const inp of inputs) {
+                if (inp.offsetParent === null) continue;
 
-            const allTextareas = document.querySelectorAll('textarea');
-            for (const ta of allTextareas) {
-                if (ta.offsetParent !== null) return ta;
+                // Get parent form field to check label
+                const formField = inp.closest('mat-form-field') || inp.closest('.mat-mdc-form-field');
+                const labelText = formField ? (formField.textContent || '').toLowerCase() : '';
+                const placeholder = (inp.placeholder || '').toLowerCase();
+
+
+                // SKIP: Search bar
+                if (placeholder.includes('検索') || placeholder.includes('search') || labelText.includes('検索')) {
+                    continue;
+                }
+
+                // MATCH: Label or form field contains "YouTube" or "URL" or "貼り付け"
+                if (labelText.includes('youtube') || labelText.includes('url') || labelText.includes('貼り付け') ||
+                    placeholder.includes('youtube') || placeholder.includes('url') || placeholder.includes('貼り付け')) {
+                    return inp;
+                }
             }
+
             return null;
         }, 5000);
 
-        if (!input) throw new Error("入力フィールドが見つかりません");
 
-        updateStatus("Entering URL...", "#ffd93d");
+
+        if (!input) throw new Error("YouTube URL入力欄が見つかりません");
 
         input.focus();
         input.value = url;
         input.dispatchEvent(new Event('input', { bubbles: true }));
         input.dispatchEvent(new Event('change', { bubbles: true }));
-        input.dispatchEvent(new Event('blur', { bubbles: true }));
-
         await delay(500);
 
-        // === STEP 4: Click Insert Button ===
-        updateStatus("Waiting for Insert button...", "#ffd93d");
+    } else {
+        updateStatus(i18n("statusStep3Website", "Step 3 - Website"), "#ffd93d");
+        if (!await clickByText(['ウェブサイト', 'website', 'websites'])) {
+            throw new Error("ウェブサイトボタンが見つかりません");
+        }
+        await delay(500);
 
-        const insertBtn = await waitFor(() => {
-            const buttons = document.querySelectorAll('button');
-            for (const btn of buttons) {
-                const text = btn.textContent?.trim() || '';
-                if ((text.includes('挿入') || text.includes('Insert')) && !btn.disabled) {
-                    return btn;
-                }
-            }
-            input.dispatchEvent(new Event('input', { bubbles: true }));
-            return null;
-        }, 8000);
+        // STEP 4: Find Website URL input
+        updateStatus(i18n("statusStep4", "Step 4 - Enter URL"), "#ffd93d");
+        const input = await findTextarea(['url', '貼り付け', 'paste']);
 
-        if (!insertBtn) throw new Error("挿入ボタンが無効です");
+        if (!input) throw new Error("URL入力欄が見つかりません");
 
-        insertBtn.click();
-
-        updateStatus("✓ 追加しました！", "#00ff88", true);
-
-        chrome.runtime.sendMessage({
-            action: "automationComplete",
-            success: true,
-            url: url
-        });
-
-    } catch (error) {
-        console.error("Automation failed:", error);
-        updateStatus(`✗ ${error.message}`, "#ff6b6b", true);
-
-        chrome.runtime.sendMessage({
-            action: "automationComplete",
-            success: false,
-            url: url
-        });
+        input.focus();
+        input.value = url;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        await delay(500);
     }
+
+    // STEP 5: Click "挿入" button
+    updateStatus(i18n("statusStep5", "Step 5 - Insert"), "#ffd93d");
+    if (!await clickByText(['挿入', 'insert'])) {
+        throw new Error("挿入ボタンが見つかりません");
+    }
+
+    updateStatus(i18n("statusSuccess", "✓ Added successfully!"), "#00ff88", true);
+    chrome.runtime.sendMessage({ action: "automationComplete", success: true, url: url });
 }
 
+// ============================================
+// ACTION TRIGGER (Upload, Drive, Text)
+// ============================================
 async function runAction(type) {
     try {
-        updateStatus("Starting Action...", "#ffd93d");
+        updateStatus("Action: Starting...", "#ffd93d");
 
-        // === STEP 1: Open Menu ===
-        // Reuse common logic to find and click Add Source
-        const addSourceBtn = await waitFor(() => {
-            // Strategy 1: Specific Classes
-            const classSelectors = ['.add-source-button', '.upload-button', '.upload-icon-button'];
-            for (const selector of classSelectors) {
-                const el = document.querySelector(selector);
-                if (el && !el.disabled && el.offsetParent) return el;
-            }
-
-            // Strategy 2: Text Content
-            const buttons = document.querySelectorAll('button, div[role="button"]');
-            for (const btn of buttons) {
-                if (btn.offsetParent === null) continue;
-                const text = (btn.textContent || "").trim().toLowerCase();
-                if (text.includes("ソースを追加") || text.includes("add source")) return btn;
-
-                const icon = btn.querySelector('.material-icons, .material-symbols-outlined, .material-symbols-rounded');
-                if (icon && (icon.textContent === 'add_circle' || icon.textContent === 'add')) {
-                    if (btn.classList.contains('mat-fab') || btn.classList.contains('mat-mdc-fab')) return btn;
-                }
-            }
-            return null;
-        }, 8000);
-
-        if (!addSourceBtn) throw new Error("ソース追加ボタンが見つかりません");
-        addSourceBtn.click();
-        await delay(500);
-
-        // Scroll to ensure visibility (Force last button into view)
-        const scrollSelectors = ['.mat-drawer-content', '.notebook-content', 'main'];
-        scrollSelectors.forEach(selector => {
-            const el = document.querySelector(selector);
-            if (el) try { el.scrollTo({ top: el.scrollHeight, behavior: 'instant' }); } catch (e) { }
-        });
-        window.scrollTo({ top: document.body.scrollHeight, behavior: 'instant' });
-
+        // Click Sources tab
+        await clickByText(['ソース', 'sources']);
         await delay(300);
-        const dialog = document.querySelector('mat-dialog-container') || document.querySelector('[role="dialog"]');
-        if (dialog) {
-            const buttons = dialog.querySelectorAll('button');
-            if (buttons.length > 0) {
-                buttons[buttons.length - 1].scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-        }
+
+        // Click Add Source
+        await clickByText(['ソースを追加', 'add source']);
         await delay(500);
 
-        // === STEP 2: Find Specific Target ===
-        let targetText = [];
-        let targetIcon = "";
-
+        // Click target button based on type
         if (type === "upload") {
-            targetText = ["PDF", "アップロード", "Upload", "file"];
-            targetIcon = "upload_file";
+            if (!await clickByText(['pdf', 'アップロード', 'upload', 'file'])) {
+                throw new Error("アップロードボタンが見つかりません");
+            }
         } else if (type === "drive") {
-            targetText = ["ドライブ", "Drive", "Slides", "Docs"];
-            targetIcon = "add_to_drive";
+            if (!await clickByText(['ドライブ', 'drive', 'google'])) {
+                throw new Error("Driveボタンが見つかりません");
+            }
         } else if (type === "text") {
-            targetText = ["テキスト", "Text", "Clipboard", "Paste"];
-            targetIcon = "content_paste";
+            if (!await clickByText(['コピーしたテキスト', 'テキスト', 'text', 'paste'])) {
+                throw new Error("テキストボタンが見つかりません");
+            }
         }
 
-        updateStatus(`Finding ${type}...`, "#ffd93d");
-
-        const targetBtn = await waitFor(() => {
-            const buttons = document.querySelectorAll('button');
-            for (const btn of buttons) {
-                if (btn.offsetParent === null) continue;
-                const text = (btn.textContent || "").toLowerCase();
-                const icon = btn.querySelector('.material-icons, .material-symbols-outlined')?.textContent;
-
-                // Check text match
-                const textMatch = targetText.some(t => text.includes(t.toLowerCase()));
-
-                // Check icon match (if available) - loose check
-                const iconMatch = icon && targetIcon && icon.includes(targetIcon);
-
-                if (textMatch || iconMatch) {
-                    return btn;
-                }
-            }
-            return null;
-        }, 5000);
-
-        if (!targetBtn) throw new Error(`${type} ボタンが見つかりません`);
-
-        targetBtn.click();
         updateStatus("✓ 完了", "#00ff88", true);
 
     } catch (error) {
@@ -364,134 +441,89 @@ async function runAction(type) {
     }
 }
 
+// ============================================
+// TEXT AUTOMATION
+// ============================================
 async function runTextAutomation(text) {
     try {
-        updateStatus("Starting Text Paste...", "#ffd93d");
+        updateStatus("Text: Starting...", "#ffd93d");
 
-        // === STEP 1: Open Menu ===
-        const addSourceBtn = await waitFor(() => {
-            // Strategy 1: Specific Classes
-            const classSelectors = ['.add-source-button', '.upload-button', '.upload-icon-button'];
-            for (const selector of classSelectors) {
-                const el = document.querySelector(selector);
-                if (el && !el.disabled && el.offsetParent) return el;
-            }
+        // Helper function to find text input (search input AND textarea, in dialog or form-field)
+        const findTextInput = () => {
+            // Search for Material Design inputs
+            const inputs = document.querySelectorAll('input.mat-mdc-input-element, textarea.mat-mdc-input-element, input.mdc-text-field__input, textarea.mdc-text-field__input, mat-dialog-container textarea, mat-dialog-container input');
+            console.log(`[NLM Auto Text] Searching ${inputs.length} inputs`);
 
-            // Strategy 2: Text Content
-            const buttons = document.querySelectorAll('button, div[role="button"]');
-            for (const btn of buttons) {
-                if (btn.offsetParent === null) continue;
-                const text = (btn.textContent || "").trim().toLowerCase();
-                if (text.includes("ソースを追加") || text.includes("add source")) return btn;
+            for (const inp of inputs) {
+                if (inp.offsetParent === null) continue;
 
-                const icon = btn.querySelector('.material-icons, .material-symbols-outlined, .material-symbols-rounded');
-                if (icon && (icon.textContent === 'add_circle' || icon.textContent === 'add')) {
-                    if (btn.classList.contains('mat-fab') || btn.classList.contains('mat-mdc-fab')) return btn;
+                // Get parent form field to check label
+                const formField = inp.closest('mat-form-field') || inp.closest('.mat-mdc-form-field');
+                const labelText = formField ? (formField.textContent || '').toLowerCase() : '';
+                const placeholder = (inp.placeholder || '').toLowerCase();
+                const aria = (inp.getAttribute('aria-label') || '').toLowerCase();
+
+                console.log(`[NLM Auto Text] Input: label="${labelText.substring(0, 40)}" placeholder="${placeholder.substring(0, 30)}"`);
+
+                // SKIP: Search bar and emoji
+                if (placeholder.includes('検索') || placeholder.includes('search') || aria.includes('絵文字')) continue;
+
+                // MATCH: Text-related input (check label AND placeholder)
+                if (labelText.includes('テキスト') || labelText.includes('text') || labelText.includes('貼り付け') || labelText.includes('paste') ||
+                    placeholder.includes('text') || placeholder.includes('paste') || placeholder.includes('貼り付け') || placeholder.includes('テキスト')) {
+                    console.log('[NLM Auto Text] Found text input!');
+                    return inp;
                 }
+
             }
             return null;
-        }, 8000);
+        };
 
-        if (!addSourceBtn) throw new Error("ソース追加ボタンが見つかりません");
-        addSourceBtn.click();
-        await delay(500);
+        // First, check if input is already available
+        let textarea = findTextInput();
 
-        // Scroll (Force last button into view)
-        const scrollSelectors = ['.mat-drawer-content', '.notebook-content', 'main'];
-        scrollSelectors.forEach(selector => {
-            const el = document.querySelector(selector);
-            if (el) try { el.scrollTo({ top: el.scrollHeight, behavior: 'instant' }); } catch (e) { }
-        });
-        window.scrollTo({ top: document.body.scrollHeight, behavior: 'instant' });
-
-        await delay(300);
-        const dialog = document.querySelector('mat-dialog-container') || document.querySelector('[role="dialog"]');
-        if (dialog) {
-            const buttons = dialog.querySelectorAll('button');
-            if (buttons.length > 0) {
-                buttons[buttons.length - 1].scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (!textarea) {
+            // Need to open the dialog
+            // Click Sources tab
+            if (!await clickByText(['ソース', 'sources'])) {
+                console.log('[NLM Auto] Sources tab not found');
             }
+            await delay(300);
+
+            // Click Add Source
+            if (!await clickByText(['ソースを追加', 'add source'])) {
+                throw new Error("ソースを追加ボタンが見つかりません");
+            }
+            await delay(500);
+
+            // Click "コピーしたテキスト" button
+            if (!await clickByText(['コピーしたテキスト', 'テキスト', 'copied text', 'paste text'])) {
+                throw new Error("テキストボタンが見つかりません");
+            }
+            await delay(800);
+
+            // Find text input after opening dialog
+            updateStatus("Text: Finding input...", "#ffd93d");
+            textarea = await waitFor(findTextInput, 5000);
         }
-        await delay(500);
 
-        // === STEP 2: Find Copied Text Option ===
-        // Reuse logic from runAction("text") but more specific if needed
-        const targetText = ["テキスト", "Text", "Clipboard", "Paste"];
-        const targetIcon = "content_paste";
 
-        const textBtn = await waitFor(() => {
-            const buttons = document.querySelectorAll('button');
-            for (const btn of buttons) {
-                if (btn.offsetParent === null) continue;
-                const text = (btn.textContent || "").toLowerCase();
-                const icon = btn.querySelector('.material-icons, .material-symbols-outlined')?.textContent;
+        if (!textarea) throw new Error("テキスト入力欄が見つかりません");
 
-                const textMatch = targetText.some(t => text.includes(t.toLowerCase()));
-                const iconMatch = icon && targetIcon && icon.includes(targetIcon);
-
-                if (textMatch || iconMatch) return btn;
-            }
-            return null;
-        }, 5000);
-
-        if (!textBtn) throw new Error("テキストボタンが見つかりません");
-        textBtn.click();
-        await delay(500);
-
-        // === STEP 3: Find Textarea and Paste ===
-        updateStatus("Finding text area...", "#ffd93d");
-        const textarea = await waitFor(() => {
-            // Updated selectors to be more robust
-            let ta = document.querySelector('textarea[aria-label*="テキスト"]');
-            if (ta) return ta;
-
-            ta = document.querySelector('textarea[placeholder*="テキスト"]');
-            if (ta) return ta;
-
-            ta = document.querySelector('textarea[placeholder*="Text"]');
-            if (ta) return ta;
-
-            // Fallback: any textarea in dialog
-            const dialog = document.querySelector('mat-dialog-container') || document.querySelector('[role="dialog"]');
-            if (dialog) {
-                ta = dialog.querySelector('textarea');
-                if (ta) return ta;
-            }
-            return null;
-        }, 5000);
-
-        if (!textarea) throw new Error("テキストエリアが見つかりません");
-
-        updateStatus("Pasting text...", "#ffd93d");
+        // Directly paste text and submit
+        updateStatus("Text: Pasting...", "#ffd93d");
         textarea.focus();
         textarea.value = text;
         textarea.dispatchEvent(new Event('input', { bubbles: true }));
         textarea.dispatchEvent(new Event('change', { bubbles: true }));
-        textarea.dispatchEvent(new Event('blur', { bubbles: true }));
+        await delay(300);
 
-        await delay(500);
+        // Click Insert
+        if (!await clickByText(['挿入', 'insert'])) {
+            throw new Error("挿入ボタンが見つかりません");
+        }
 
-        // === STEP 4: Click Insert Button ===
-        updateStatus("Waiting for Insert button...", "#ffd93d");
-
-        const insertBtn = await waitFor(() => {
-            const buttons = document.querySelectorAll('button');
-            for (const btn of buttons) {
-                const buttonText = btn.textContent?.trim() || '';
-                if ((buttonText.includes('挿入') || buttonText.includes('Insert')) && !btn.disabled) {
-                    return btn;
-                }
-            }
-            // Trigger input again just in case
-            textarea.dispatchEvent(new Event('input', { bubbles: true }));
-            return null;
-        }, 8000);
-
-        if (!insertBtn) throw new Error("挿入ボタンが無効です");
-
-        insertBtn.click();
-
-        updateStatus("✓ 追加しました！", "#00ff88", true);
+        updateStatus("✓ テキスト追加完了！", "#00ff88", true);
         chrome.runtime.sendMessage({ action: "automationComplete", success: true });
 
     } catch (error) {
@@ -500,3 +532,4 @@ async function runTextAutomation(text) {
         chrome.runtime.sendMessage({ action: "automationComplete", success: false });
     }
 }
+

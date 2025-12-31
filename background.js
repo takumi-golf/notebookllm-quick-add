@@ -16,13 +16,29 @@ chrome.runtime.onConnect.addListener((port) => {
   }
 });
 
+// === Helper: Get Notebook ID ===
+function getNotebookId(url) {
+  if (!url) return null;
+  const match = url.match(/\/notebook\/([^\/]+)/);
+  return match ? match[1] : null;
+}
+
 // === Helper: Check for Duplicates ===
-async function isDuplicate(url) {
+async function isDuplicate(url, notebookId) {
+  if (!notebookId) return false; // If we don't know the notebook, assume no duplicate (safer)
+
   const data = await chrome.storage.local.get("history");
   const history = data.history || [];
-  // Simple normalization: remove trailing slashes for comparison
+  // Simple normalization
   const normalizedUrl = url.replace(/\/$/, "");
-  return history.some(item => item.url.replace(/\/$/, "") === normalizedUrl);
+
+  return history.some(item => {
+    // Only check items that belong to the SAME notebook
+    if (item.notebookId && item.notebookId === notebookId) {
+      return item.url.replace(/\/$/, "") === normalizedUrl;
+    }
+    return false;
+  });
 }
 
 // === Message Handling ===
@@ -53,24 +69,20 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         }
 
         const currentUrl = getUrlWithTimestamp(selectedTab);
+        const notebookId = getNotebookId(currentNotebookUrl);
 
-        if (await isDuplicate(currentUrl)) {
-          showNotification(false, currentUrl, "このURLは既に追加済みです");
-          sendResponse({ success: false, error: "既に追加済みのURLです" });
-          return;
-        }
 
         if (iframePort) {
           try {
             iframePort.postMessage({ action: "addSource", url: currentUrl });
-            saveToHistory(currentUrl, selectedTab.title);
+            saveToHistory(currentUrl, selectedTab.title, notebookId);
             sendResponse({ success: true });
           } catch (e) {
             iframePort = null;
             sendResponse({ success: false, error: "接続が切れました" });
           }
         } else {
-          sendResponse({ success: false, error: "NotebookLMに接続していません" });
+          sendResponse({ success: false, error: "サイドパネル内のNotebookLMをクリックしてください" });
         }
       });
     })();
@@ -79,16 +91,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     (async () => {
       const manualUrl = request.url;
 
-      if (await isDuplicate(manualUrl)) {
-        showNotification(false, manualUrl, "このURLは既に追加済みです");
-        sendResponse({ success: false, error: "既に追加済みのURLです" });
-        return;
-      }
 
       if (iframePort) {
         try {
           iframePort.postMessage({ action: "addSource", url: manualUrl });
-          saveToHistory(manualUrl, "手動入力: " + manualUrl);
+          saveToHistory(manualUrl, "手動入力: " + manualUrl, notebookId);
           sendResponse({ success: true });
         } catch (e) {
           iframePort = null;
@@ -127,7 +134,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         sendResponse({ success: false, error: "接続が切れました" });
       }
     } else {
-      sendResponse({ success: false, error: "NotebookLMに接続していません" });
+      sendResponse({ success: false, error: "NotebookLMのタブを開いてください" });
     }
     return true;
   } else if (request.action === "notebookUrlChanged") {
@@ -159,11 +166,9 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId === "add-to-notebooklm") {
     const url = info.linkUrl || info.pageUrl;
-    if (await isDuplicate(url)) {
-      showNotification(false, url, "このURLは既に追加済みです");
-      return;
-    }
-    addSourceToNotebook(url, tab);
+    const notebookId = getNotebookId(currentNotebookUrl);
+
+    addSourceToNotebook(url, tab, notebookId);
   }
 });
 
@@ -173,11 +178,9 @@ chrome.commands.onCommand.addListener((command) => {
     chrome.tabs.query({ active: true, lastFocusedWindow: true }, async (tabs) => {
       if (tabs[0]) {
         const url = getUrlWithTimestamp(tabs[0]);
-        if (await isDuplicate(url)) {
-          showNotification(false, url, "このURLは既に追加済みです");
-          return;
-        }
-        addSourceToNotebook(url, tabs[0]);
+        const notebookId = getNotebookId(currentNotebookUrl);
+
+        addSourceToNotebook(url, tabs[0], notebookId);
       }
     });
   }
@@ -198,10 +201,10 @@ function getUrlWithTimestamp(tab) {
 }
 
 // === Add Source Function ===
-function addSourceToNotebook(url, tab) {
+function addSourceToNotebook(url, tab, notebookId) {
   if (iframePort) {
     iframePort.postMessage({ action: "addSource", url: url });
-    saveToHistory(url, tab?.title || url);
+    saveToHistory(url, tab?.title || url, notebookId);
   } else {
     // Open side panel first if not connected
     chrome.sidePanel.open({ windowId: tab.windowId });
@@ -209,14 +212,14 @@ function addSourceToNotebook(url, tab) {
     setTimeout(() => {
       if (iframePort) {
         iframePort.postMessage({ action: "addSource", url: url });
-        saveToHistory(url, tab?.title || url);
+        saveToHistory(url, tab?.title || url, notebookId);
       }
     }, 2000);
   }
 }
 
 // === History ===
-async function saveToHistory(url, title) {
+async function saveToHistory(url, title, notebookId) {
   const data = await chrome.storage.local.get("history");
   const history = data.history || [];
 
@@ -224,7 +227,8 @@ async function saveToHistory(url, title) {
   history.unshift({
     url: url,
     title: title,
-    date: new Date().toISOString()
+    date: new Date().toISOString(),
+    notebookId: notebookId || null // Save context
   });
 
   if (history.length > 50) {
