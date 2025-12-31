@@ -258,7 +258,7 @@ function showNotification(success, url, customMessage = null) {
     message = customMessage;
   } else {
     message = success
-      ? url.substring(0, 50) + (url.length > 50 ? "..." : "")
+      ? (url ? url.substring(0, 50) + (url.length > 50 ? "..." : "") : "完了しました")
       : "もう一度お試しください";
   }
 
