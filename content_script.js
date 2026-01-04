@@ -67,7 +67,8 @@ function waitFor(fn, timeout = 8000, interval = 300) {
 // === VERSION DETECTION ===
 function detectVersion() {
     const allText = document.body.innerText || '';
-    const hasPROLabel = allText.includes('PRO');
+    // PRO and ULTRA both use the same UI, so treat ULTRA as PRO
+    const hasPROLabel = allText.includes('PRO') || allText.includes('ULTRA');
 
     if (hasPROLabel) {
         return 'pro';

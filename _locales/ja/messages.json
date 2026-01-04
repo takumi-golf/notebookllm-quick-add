@@ -1,89 +1,10 @@
 {
-    "extName": {
-        "message": "NotebookLM Quick Add"
+    "appName": {
+        "message": "Quick Add for NotebookLM - WebとYouTubeを1クリック保存",
+        "description": "The name of the extension"
     },
-    "extDesc": {
-        "message": "現在のページをNotebookLMにワンクリックで追加"
-    },
-    "btnAddCurrent": {
-        "message": "現在のページを追加"
-    },
-    "statusSelectNotebook": {
-        "message": "ノートブックを選択してください..."
-    },
-    "tooltipManualUrl": {
-        "message": "URLを手動入力"
-    },
-    "tooltipAndText": {
-        "message": "テキストを貼り付け"
-    },
-    "tooltipHistory": {
-        "message": "最近の追加履歴"
-    },
-    "tooltipDonate": {
-        "message": "開発者を支援 (寄付)"
-    },
-    "placeholderUrl": {
-        "message": "https://example.com/article..."
-    },
-    "placeholderText": {
-        "message": "テキストを入力..."
-    },
-    "btnAdd": {
-        "message": "追加"
-    },
-    "headerHistory": {
-        "message": "履歴"
-    },
-    "btnClear": {
-        "message": "クリア"
-    },
-    "msgHistoryEmpty": {
-        "message": "履歴はありません"
-    },
-    "confirmClear": {
-        "message": "履歴をすべて削除しますか？"
-    },
-    "statusReady": {
-        "message": "準備完了"
-    },
-    "statusAdding": {
-        "message": "追加中..."
-    },
-    "errorGeneric": {
-        "message": "エラーが発生しました"
-    },
-    "shortcutHint": {
-        "message": "ショートカット:"
-    },
-    "statusStarting": {
-        "message": "開始中..."
-    },
-    "statusStep1": {
-        "message": "Step 1 - ソースタブ"
-    },
-    "statusStep2": {
-        "message": "Step 2 - ソースを追加"
-    },
-    "statusStep3Website": {
-        "message": "Step 3 - ウェブサイト"
-    },
-    "statusStep3YouTube": {
-        "message": "Step 3 - YouTube"
-    },
-    "statusStep4": {
-        "message": "Step 4 - URL入力"
-    },
-    "statusStep5": {
-        "message": "Step 5 - 挿入"
-    },
-    "statusSuccess": {
-        "message": "✓ 追加しました！"
-    },
-    "statusTextStarting": {
-        "message": "テキスト追加中..."
-    },
-    "statusTextSuccess": {
-        "message": "✓ テキストを追加しました！"
+    "appDesc": {
+        "message": "閲覧中のWeb記事やYouTube動画を、ワンクリックでNotebookLMのソースに追加。リサーチと情報収集を劇的に高速化します。",
+        "description": "The description of the extension"
     }
 }
